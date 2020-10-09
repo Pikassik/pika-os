@@ -13,6 +13,7 @@ uint16_t* terminal_buffer = NULL;
 static uint16_t scroll_buffer[SCROLL_BUFFER_SIZE][VGA_WIDTH];
 static size_t scroll_buffer_row = 0;
 static size_t scroll_buffer_cursor = 0;
+static default_color = VGA_COLOR_WHITE;
 
 void terminal_cursor_down();
 
@@ -30,6 +31,10 @@ uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
 
 uint16_t vga_entry(unsigned char uc, uint8_t color) {
   return (uint16_t) uc | (uint16_t) color << 8;
+}
+
+void set_color(uint8_t color) {
+  default_color = color;
 }
 
 void sync_with_scroll_buffer(size_t row) {
@@ -125,7 +130,7 @@ void terminal_cursor_down() {
 }
 
 void _putchar(char character) {
-  terminal_putchar_color(character, VGA_COLOR_WHITE);
+  terminal_putchar_color(character, default_color);
 }
 
 __attribute__ ((interrupt)) void isr0(struct iframe* frame) {

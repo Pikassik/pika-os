@@ -24,6 +24,8 @@ uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg);
 
 uint16_t vga_entry(unsigned char uc, uint8_t color);
 
+void set_color(uint8_t color);
+
 extern size_t terminal_column;
 extern uint16_t* terminal_buffer;
 
