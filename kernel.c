@@ -1,10 +1,11 @@
-#include <stddef.h>
-#include <stdint.h>
-
-#include "asm_instrs.h"
 #include "interrupts.h"
 #include "terminal.h"
-#include "utils/printf.h"
+#include "utils.h"
+#include "panic.h"
+#include "acpi.h"
+#include "apic.h"
+#include "gdt.h"
+#include "memory_map.h"
 
 static const char WELCOME[] =
 "Welcome to pika operation system!\n\n ";
@@ -24,6 +25,8 @@ static const char LOGO[] =
 "          `''       `''\n";
 
 void kernel_main(void) {
+  cli();
+  init_gdt();
   init_idt();
 
   terminal_initialize();
@@ -34,14 +37,19 @@ void kernel_main(void) {
   printf_(LOGO);
   set_color(VGA_COLOR_WHITE);
 
-  for (size_t i = 0; i < 15; ++i) {
-    printf_("%d\n", i);
+  detect_memory();
+
+  struct acpi_sdt* rsdt = acpi_find_rsdt();
+  if (!rsdt) {
+      panic("RSDT not found!");
   }
 
-  sti();
-  asm volatile ("int $0x80");
+  apic_init(rsdt);
 
-  for(;;) {
-    asm volatile ("hlt");
+
+  sti();
+
+  while (1) {
+    hlt();
   }
 }

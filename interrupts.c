@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
-
+#include "isr.h"
 #include "interrupts.h"
 
 struct idt_entry {
@@ -29,27 +29,24 @@ static void idt_register(uint8_t pos, uint32_t base, uint16_t sel, uint8_t flags
   IDT[pos].flags = flags;
 }
 
-extern void isr0();
-extern void isr9();
-
 void init_idt() {
-  IDTPTR.limit = sizeof(struct idt_entry) * 256 - 1;
+  IDTPTR.limit = sizeof(IDT) - 1;
   IDTPTR.base = (uint32_t)&IDT;
 
   // For flags param see https://wiki.osdev.org/IDT#Structure_IA-32.
-  idt_register(0, (uint32_t)isr0, 0x08, 0b10001110);
-  idt_register(9, (uint32_t)isr9, 0x08, 0b10001110);
-  idt_register(0x80, (uint32_t)isr0, 0x08, 0b10001110);
+  for (size_t i = 0; i < 256; i++) {
+      idt_register(i, (uint32_t)dummy_isr, 0x08, 0b10001110);
+  }
+
+  idt_register(128, (uint32_t)syscall_entry, 0x08, 0b11101110);
+  idt_register(32, (uint32_t)timer_isr, 0x08, 0b10001110);
+  idt_register(40, (uint32_t)keyboard_isr, 0x08, 0b10001110);
+  idt_register(39, (uint32_t)spurious_isr, 0x08, 0b10001110);
 
   asm volatile (
-  "lidt (%0)\n"
-  :
-  : "r"(&IDTPTR)
-  :
+      "lidt (%0)\n"
+      :
+      : "r"(&IDTPTR)
+      :
   );
-
-  unsigned char mask = 0xfd;
-  asm volatile ("outb %0, $0x21\n\t"::"r"(mask):);
-  mask = 0xff;
-  asm volatile ("outb %0, $0xa1\n\t"::"r"(mask):);
 }
