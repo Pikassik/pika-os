@@ -107,7 +107,7 @@ static void calibrate_timer() {
   lapic_write(APIC_TMRINITCNT, 0xFFFFFFFF);
 
   // Perform PIT-supported sleep
-  while ((inb(0x61) > 0x20));
+  while ((inb(0x61) & (uint8_t)0x20));
   lapic_write(APIC_LVT_TMR,  APIC_DISABLE);
 
   // Now we know how often the APIC timer has ticked in 10ms
