@@ -1,28 +1,42 @@
-ENTRY(_start)
+ENTRY(_start_early)
+
+KERNEL_HIGH = 0x80000000;
 
 SECTIONS
 {
-    . = 1M;
+    . = 0x00100000;
 
-    .text BLOCK(4K) : ALIGN(4K)
-    {
-        *(.multiboot)
-        *(.text)
+    .multiboot : {
+        KEEP(*(.multiboot))
     }
 
-    .rodata BLOCK(4K) : ALIGN(4K)
-    {
-        *(.rodata)
+    .boot.text : {
+        *(.boot.text)
     }
 
-    .data BLOCK(4K) : ALIGN(4K)
-    {
-        *(.data)
-    }
+	. += KERNEL_HIGH;
 
-    .bss BLOCK(4K) : ALIGN(4K)
-    {
-        *(COMMON)
-        *(.bss)
-    }
+    PROVIDE(KERNEL_START = .);
+	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_HIGH) {
+		*(.text)
+	}
+
+	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_HIGH) {
+		*(.rodata)
+	}
+
+	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_HIGH) {
+		*(.data)
+	}
+
+	.bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_HIGH) {
+		*(COMMON)
+		*(.bss)
+	}
+    PROVIDE(KERNEL_END = .);
+
+    /DISCARD/ : {
+		*(.eh_frame)
+        *(.note.gnu.*)
+	}
 }

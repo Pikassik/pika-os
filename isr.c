@@ -3,6 +3,7 @@
 #include "apic.h"
 #include "kbd.h"
 #include "terminal.h"
+#include "panic.h"
 
 __attribute__ ((interrupt)) void syscall_entry(struct iframe* frame) {
   (void)frame;
@@ -90,4 +91,12 @@ __attribute__ ((interrupt)) void spurious_isr(struct iframe* frame) {
   cli();
   apic_eoi();
   sti();
+}
+
+__attribute__ ((interrupt)) void pagefault_isr(struct iframe* frame,
+                                               uint32_t error_code) {
+  (void)frame;
+  (void)error_code;
+  printf_("pagefault on address = 0x%x", read_cr2());
+  panic("pagefault happened :(");
 }

@@ -1,7 +1,8 @@
-AS=gcc -m32 -c -g -mgeneral-regs-only -mno-red-zone
 C_FLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra
-CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone $(C_FLAGS)
-LD=gcc -m32
+AS=gcc -m32 -c -g -mgeneral-regs-only
+CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone -std=gnu99 -ffreestanding -fno-pie -Wall -Wextra -O2
+LD=gcc -m32 -fno-pic
+OBJCOPY=objcopy
 
 OBJ=interrupts.o \
     boot.o \
@@ -16,7 +17,14 @@ OBJ=interrupts.o \
     isr.o \
     gdt.o \
     load_gdt.o \
-    memory_map.o
+    detect_memory.o \
+    paging.o
+
+image: build
+	mkdir -p isodir/boot/grub
+	cp grub.cfg isodir/boot/grub
+	cp kernel.bin isodir/boot && grub-mkrescue -o kernel.iso isodir
+	rm -rf isodir
 
 build:
 	$(CC) -c utils/string.c -o string.o
@@ -33,10 +41,13 @@ build:
     -D PRINTF_DISABLE_SUPPORT_FLOAT \
     -D PRINTF_DISABLE_SUPPORT_EXPONENTIAL \
     -D PRINTF_DISABLE_SUPPORT_LONG_LONG
-	$(CC) -c memory_map.c -o memory_map.o
+	$(CC) -c detect_memory.c -o detect_memory.o
 	$(CC) -c kernel.c -o kernel.o
+	$(CC) -c paging.c -o paging.o
 	$(AS) boot.s -o boot.o
 	$(LD) -T linker.ld -o kernel.bin -ffreestanding -O2 -nostdlib $(OBJ) -lgcc
+	$(OBJCOPY) --only-keep-debug kernel.bin kernel.sym
+	$(OBJCOPY) --strip-debug kernel.bin
 
 clean:
 	rm kernel.bin $(OBJ)

@@ -39,9 +39,10 @@ void init_idt() {
   }
 
   idt_register(128, (uint32_t)syscall_entry, 0x08, 0b11101110);
-  idt_register(32, (uint32_t)timer_isr, 0x08, 0b10001110);
-  idt_register(40, (uint32_t)keyboard_isr, 0x08, 0b10001110);
-  idt_register(39, (uint32_t)spurious_isr, 0x08, 0b10001110);
+  idt_register(32,  (uint32_t)timer_isr,     0x08, 0b10001110);
+  idt_register(40,  (uint32_t)keyboard_isr,  0x08, 0b10001110);
+  idt_register(39,  (uint32_t)spurious_isr,  0x08, 0b10001110);
+  idt_register(14,  (uint32_t)pagefault_isr, 0x08, 0b10001110);
 
   asm volatile (
       "lidt (%0)\n"
