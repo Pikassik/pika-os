@@ -33,10 +33,20 @@ SECTIONS
 		*(COMMON)
 		*(.bss)
 	}
+
+    . += 4M;
+    . = ALIGN(0x1000);
+    PROVIDE(USERSPACE_START = .);
+    .userspace.text : AT(ADDR(.userspace.text) - KERNEL_HIGH) {
+		*(.userspace.text)
+	}
+
     PROVIDE(KERNEL_END = .);
 
     /DISCARD/ : {
 		*(.eh_frame)
         *(.note.gnu.*)
+        *(.dynamic)
 	}
+
 }

@@ -7,7 +7,7 @@
 #include "gdt.h"
 #include "detect_memory.h"
 #include "paging.h"
-#include "multiboot_info.h"
+#include "sched.h"
 
 static const char WELCOME[] =
 "Welcome to pika operation system!\n\n ";
@@ -35,8 +35,8 @@ void kernel_main(void) {
 
   detect_memory();
   init_kalloc_early();
+//  panic("aaaaaaaa");
   init_kernel_paging();
-
   struct acpi_sdt* rsdt = acpi_find_rsdt();
   if (!rsdt) {
     panic("RSDT not found!");
@@ -52,7 +52,7 @@ void kernel_main(void) {
 
   sti();
 
-  while (1) {
-    hlt();
-  }
+
+  scheduler_start();
+  BUG_ON_REACH();
 }

@@ -26,6 +26,7 @@
 extern char KERNEL_HIGH[];
 extern char KERNEL_END[];
 extern char KERNEL_START[];
+extern char USERSPACE_START[];
 
 void* virt2phys(void* addr);
 

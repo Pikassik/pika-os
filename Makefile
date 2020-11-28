@@ -1,7 +1,7 @@
 C_FLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra
 AS=gcc -m32 -c -g -mgeneral-regs-only
-CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone -std=gnu99 -ffreestanding -fno-pie -Wall -Wextra -O2
-LD=gcc -m32 -fno-pic
+CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone -std=gnu99 -ffreestanding -fno-pie -Wall -Wextra -O2 -static-libgcc -O2
+LD=gcc -m32 -fno-pic -Wl,-static -Wl,-Bsymbolic -nostartfiles
 OBJCOPY=objcopy
 
 OBJ=interrupts.o \
@@ -18,7 +18,12 @@ OBJ=interrupts.o \
     gdt.o \
     load_gdt.o \
     detect_memory.o \
-    paging.o
+    paging.o \
+    syscall.o \
+    syscall_asm.o \
+    sched.o \
+    sched_asm.o \
+    irq_asm.o
 
 image: build
 	mkdir -p isodir/boot/grub
@@ -29,7 +34,7 @@ image: build
 build:
 	$(CC) -c utils/string.c -o string.o
 	$(CC) -c gdt.c -o gdt.o
-	$(AS) -c gdt.s -o load_gdt.o
+	$(AS) -c gdt.S -o load_gdt.o
 	$(CC) -c apic.c -o apic.o
 	$(CC) -c panic.c -o panic.o
 	$(CC) -c acpi.c -o acpi.o
@@ -44,6 +49,11 @@ build:
 	$(CC) -c detect_memory.c -o detect_memory.o
 	$(CC) -c kernel.c -o kernel.o
 	$(CC) -c paging.c -o paging.o
+	$(CC) -c syscall.c -o syscall.o
+	$(CC) -c sched.c -o sched.o
+	$(AS) syscall.S -o syscall_asm.o
+	$(AS) sched.S -o sched_asm.o
+	$(AS) irq.S -o irq_asm.o
 	$(AS) boot.s -o boot.o
 	$(LD) -T linker.ld -o kernel.bin -ffreestanding -O2 -nostdlib $(OBJ) -lgcc
 	$(OBJCOPY) --only-keep-debug kernel.bin kernel.sym

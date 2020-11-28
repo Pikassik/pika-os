@@ -23,6 +23,7 @@ __attribute__((section(".boot.text"))) void setup_paging_early() {
   // KERNEL_HIGH...KERNEL_HIGH+4Mb mapped to 0x0...4Mb
   early_pgdir[0] = PT_PRESENT | PT_WRITEABLE | PT_PAGE_SIZE;
   early_pgdir[PGDIR_IDX(&KERNEL_HIGH)] = PT_PRESENT | PT_WRITEABLE | PT_PAGE_SIZE;
+  early_pgdir[PGDIR_IDX(&USERSPACE_START)] = (uint32_t)ROUNDDOWNBIG(virt2phys(&USERSPACE_START)) | PT_PRESENT | PT_WRITEABLE | PT_PAGE_SIZE;
 }
 
 struct physical_segment {
@@ -77,7 +78,9 @@ void init_kalloc_early() {
     end = ROUNDDOWNBIG(MMIO_after_memory);
   }
   struct fl_entry* entry = (struct fl_entry*)start;
+  printf_("addr: 0x%x", entry);
   entry->next = NULL;
+//  panic("bbb");
   kalloc_head.freelist_head = entry;
   kalloc_head.freelist_head->blocks_cnt = (end - start) / PAGE_SIZE;
 }
@@ -138,12 +141,12 @@ void kfree(void* ptr, size_t size) {
   }
 }
 
-uint32_t* alloc_page(uint32_t* pgdir, void* addr) {
+uint32_t* alloc_page(uint32_t* pgdir, void* addr, int user) {
   uint32_t* page_table = NULL;
   if (pgdir[PGDIR_IDX(addr)] & PT_PRESENT) {
     page_table = phys2virt((void*)ROUNDDOWN(pgdir[PGDIR_IDX(addr)]));
   } else {
-    page_table = kalloc(1);
+    page_table = kalloc(PAGE_SIZE);
     if (!page_table) {
       return NULL;
     }
@@ -152,23 +155,25 @@ uint32_t* alloc_page(uint32_t* pgdir, void* addr) {
     }
   }
 
-  pgdir[PGDIR_IDX(addr)] = ((uint32_t)virt2phys(page_table)) | PT_PRESENT
-                                                             | PT_WRITEABLE;
+  int flags = PT_PRESENT;
+  if (user) {
+    flags |= PT_USER;
+  }
+  pgdir[PGDIR_IDX(addr)] = ((uint32_t)virt2phys(page_table)) | flags;
+
   return &page_table[PT_IDX(addr)];
 }
 
 void map_continous(uint32_t* pgdir, void* addr, size_t size,
-                   void* phys_addr, int writeable) {
+                   void* phys_addr, int flags) {
   addr = (void*)ROUNDDOWN((uint32_t)addr);
   phys_addr = (void*)ROUNDDOWN((uint32_t)phys_addr);
   size = ROUNDUP(size);
 
   while (size > 0) {
-    uint32_t* pte = alloc_page(pgdir, addr);
+    uint32_t* pte = alloc_page(pgdir, addr, flags & PT_USER);
     *pte = ((uint32_t)phys_addr) | PT_PRESENT;
-    if (writeable) {
-      *pte |= PT_WRITEABLE;
-    }
+    *pte |= flags;
     addr += PAGE_SIZE;
     phys_addr += PAGE_SIZE;
     size -= PAGE_SIZE;
@@ -178,7 +183,7 @@ void map_continous(uint32_t* pgdir, void* addr, size_t size,
 uint32_t* kernel_pgdir = NULL;
 
 void init_kernel_paging() {
-  kernel_pgdir = kalloc(1);
+  kernel_pgdir = kalloc(PAGE_SIZE);
   memset(kernel_pgdir, '\0', PAGE_SIZE);
   for (void* ptr = KERNEL_HIGH;
        ptr < (void*)(MMIO_after_memory - BIG_PAGE_SIZE);
@@ -186,11 +191,12 @@ void init_kernel_paging() {
     kernel_pgdir[PGDIR_IDX(ptr)] =
       (uint32_t)virt2phys((void*)(ptr)) | PT_PRESENT
                                         | PT_WRITEABLE
-                                        | PT_PAGE_SIZE;
+                                        | PT_PAGE_SIZE
+                                        | PT_USER /* remove later */;
   }
   load_cr3(virt2phys(kernel_pgdir));
 }
 
 void identity_map(void* addr, size_t sz) {
-  map_continous(kernel_pgdir, addr, sz, addr, 1);
+  map_continous(kernel_pgdir, addr, sz, addr, PT_WRITEABLE);
 }
