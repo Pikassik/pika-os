@@ -40,3 +40,7 @@ void terminal_write(const char* data, size_t size, uint8_t color);
 void terminal_writestring(const char* data);
 
 void terminal_writestring_color(const char* data, uint8_t color);
+
+void terminal_cursor_up();
+
+void terminal_cursor_down();
