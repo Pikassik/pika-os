@@ -3,13 +3,8 @@
 #include "apic.h"
 #include "kbd.h"
 #include "terminal.h"
-
-__attribute__ ((interrupt)) void syscall_entry(struct iframe* frame) {
-  (void)frame;
-  cli();
-  printf_("Syscall!\n");
-  sti();
-}
+#include "panic.h"
+#include "sched.h"
 
 uint8_t getchar_from_keyboard() {
   static uint32_t shift;
@@ -51,8 +46,8 @@ uint8_t getchar_from_keyboard() {
   return c;
 };
 
-__attribute__ ((interrupt)) void keyboard_isr(struct iframe* frame) {
-  (void)frame;
+void keyboard_irq(struct regs* regs) {
+  (void)regs;
   cli();
   uint8_t c = getchar_from_keyboard();
   if (c != (uint8_t)-1) {
@@ -68,26 +63,36 @@ __attribute__ ((interrupt)) void keyboard_isr(struct iframe* frame) {
   sti();
 }
 
-static int milliseconds = 0;
 
-__attribute__ ((interrupt)) void timer_isr(struct iframe* frame) {
-  (void)frame;
-  cli();
-  ++milliseconds;
-  if (milliseconds % (60 * 1000) == 0) {
-    printf_("%d minutes elapsed\n", milliseconds / (60 * 1000));
+volatile uint64_t timer_ticks;
+
+void timer_irq(struct regs* regs) {
+  (void)regs;
+  __sync_fetch_and_add(&timer_ticks, 1);
+  apic_eoi();
+  scheduler_tick(regs);
+}
+
+void dummy_irq(struct regs* regs) {
+  (void)regs;
+}
+
+void spurious_irq(struct regs* regs) {
+  (void)regs;
+  apic_eoi();
+}
+
+
+void pagefault_irq(struct regs* regs) {
+  (void)regs;
+  if (!current_task) {
+    printf_("pagefault in kernel :(\n"
+            "    cr2=0x%x, eip=0x%x, err_code=%d\n",
+        read_cr2(), regs->eip, regs->error_code);
+    panic("pagefault :(");
   }
-  apic_eoi();
-  sti();
-}
 
-__attribute__ ((interrupt)) void dummy_isr(struct iframe* frame) {
-  (void)frame;
-}
-
-__attribute__ ((interrupt)) void spurious_isr(struct iframe* frame) {
-  (void)frame;
-  cli();
-  apic_eoi();
-  sti();
+  current_task->exitcode = 0x10000; // "terminated"
+  current_task->state = TASK_TERMINATED;
+  reschedule();
 }

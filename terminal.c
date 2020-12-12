@@ -1,5 +1,6 @@
 #include "terminal.h"
 #include "utils.h"
+#include "paging.h"
 
 size_t terminal_column = 0;
 uint16_t* terminal_buffer = NULL;
@@ -47,7 +48,7 @@ void sync_with_scroll_buffer(size_t row) {
 void terminal_initialize(void) {
   terminal_column = 0;
   uint8_t color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-  terminal_buffer = (uint16_t*) 0xB8000;
+  terminal_buffer = phys2virt((uint16_t*) 0xB8000);
   for (size_t y = 0; y < SCROLL_BUFFER_SIZE; y++) {
     for (size_t x = 0; x < VGA_WIDTH; x++) {
       scroll_buffer[y][x] = vga_entry(' ', color);

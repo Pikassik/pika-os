@@ -1,4 +1,6 @@
 # Prerequisites
+*.sym
+*.iso
 *.d
 .idea/*
 build/*

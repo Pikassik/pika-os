@@ -1,6 +1,7 @@
 #include "apic.h"
 #include "panic.h"
 #include "utils.h"
+#include "paging.h"
 
 #define TYPE_LAPIC          0
 #define TYPE_IOAPIC         1
@@ -107,13 +108,13 @@ static void calibrate_timer() {
   lapic_write(APIC_TMRINITCNT, 0xFFFFFFFF);
 
   // Perform PIT-supported sleep
-  while ((inb(0x61) > 0x20));
+  while (inb(0x61) & (uint8_t)0x20);
   lapic_write(APIC_LVT_TMR,  APIC_DISABLE);
 
   // Now we know how often the APIC timer has ticked in 10ms
   uint32_t ticksIn10ms = (0xFFFFFFFF - lapic_read(APIC_TMRCURRCNT));
   printf_("ticks in 10ms: %d\n", ticksIn10ms);
-//  panic("enough\n");
+
   // Start timer as periodic on IRQ 0, divider 16, with the number of ticks we counted
   lapic_write(APIC_TMRINITCNT, ticksIn10ms / 10);
   lapic_write(APIC_TMRDIV, 0x3);
@@ -155,6 +156,9 @@ void apic_init(struct acpi_sdt* rsdt) {
   if (!lapic_ptr) {
     panic("cannot locate Local APIC address");
   }
+
+  identity_map((void*)lapic_ptr, 2 * PAGE_SIZE);
+  identity_map((void*)ioapic_ptr, 2 * PAGE_SIZE);
 
   // Disable old PIC.
   outb(0x20 + 1, 0xFF);
