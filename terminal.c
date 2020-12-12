@@ -1,6 +1,7 @@
 #include "terminal.h"
-#include "utils.h"
-#include "paging.h"
+#include "utils/string.h"
+#include "asm_instrs.h"
+#include "utils/printf.h"
 
 size_t terminal_column = 0;
 uint16_t* terminal_buffer = NULL;
@@ -12,7 +13,7 @@ uint16_t* terminal_buffer = NULL;
 static uint16_t scroll_buffer[SCROLL_BUFFER_SIZE][VGA_WIDTH];
 static size_t scroll_buffer_row = 0;
 static size_t scroll_buffer_cursor = 0;
-static int default_color = VGA_COLOR_WHITE;
+static default_color = VGA_COLOR_WHITE;
 
 void terminal_cursor_down();
 
@@ -41,14 +42,14 @@ void sync_with_scroll_buffer(size_t row) {
     uint16_t* dest = terminal_buffer + i * VGA_WIDTH;
     uint16_t* src =
       scroll_buffer[(row + i) % SCROLL_BUFFER_SIZE];
-    memmove(dest, src, sizeof(scroll_buffer[0]));
+    memcpy(dest, src, VGA_WIDTH);
   }
 }
 
 void terminal_initialize(void) {
   terminal_column = 0;
   uint8_t color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-  terminal_buffer = phys2virt((uint16_t*) 0xB8000);
+  terminal_buffer = (uint16_t*) 0xB8000;
   for (size_t y = 0; y < SCROLL_BUFFER_SIZE; y++) {
     for (size_t x = 0; x < VGA_WIDTH; x++) {
       scroll_buffer[y][x] = vga_entry(' ', color);
@@ -61,7 +62,7 @@ void terminal_initialize(void) {
 
 void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
   uint16_t entry = vga_entry(c, color);
-  scroll_buffer[y % SCROLL_BUFFER_SIZE][x] = entry;
+  scroll_buffer[scroll_buffer_cursor % SCROLL_BUFFER_SIZE][x] = entry;
 }
 
 void clear_current_row() {
@@ -73,25 +74,30 @@ void clear_current_row() {
   }
 }
 
-void next_row() {
-  terminal_column = 0;
-  scroll_buffer_cursor = (scroll_buffer_cursor + 1) % SCROLL_BUFFER_SIZE;
-  clear_current_row();
-}
-
 void terminal_putchar_color(char c, uint8_t color) {
-  if (c == '\n') {
-    next_row();
-  } else {
-    terminal_putentryat(c, color, terminal_column, scroll_buffer_cursor);
-    terminal_column++;
-    if (terminal_column == VGA_WIDTH) {
-      next_row();
+  switch (c) {
+    case '\n': {
+      goto next_row;
+    }
+
+    default: {
+      terminal_putentryat(c, color, terminal_column, scroll_buffer_cursor);
+      terminal_column++;
+      if (terminal_column == VGA_WIDTH) {
+        goto next_row;
+      }
+      break;
+    }
+
+    next_row: {
+      terminal_column = 0;
+      scroll_buffer_cursor = (scroll_buffer_cursor + 1) % SCROLL_BUFFER_SIZE;
+      clear_current_row();
     }
   }
 
   scroll_buffer_row = minus_vga_height(scroll_buffer_cursor);
-  sync_with_scroll_buffer(scroll_buffer_row + 1);
+  sync_with_scroll_buffer(scroll_buffer_row);
 }
 
 void terminal_write(const char* data, size_t size, uint8_t color) {
@@ -123,8 +129,38 @@ void terminal_cursor_down() {
   sync_with_scroll_buffer(scroll_buffer_row);
 }
 
-
-
 void _putchar(char character) {
   terminal_putchar_color(character, default_color);
+}
+
+__attribute__ ((interrupt)) void isr0(struct iframe* frame) {
+  terminal_writestring_color(
+    "Hello world!\n",
+    vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK)
+  );
+  (void)frame;
+}
+
+static const unsigned char CURSOR_UP_CODE = 0x48;
+static const unsigned char CURSOR_DOWN_CODE = 0x50;
+
+__attribute__ ((interrupt)) void isr9(struct iframe* frame) {
+  cli();
+  const unsigned char x20 = 0x20;
+  asm volatile ("outb %0, $0x20\n\t"::"r"(x20):);
+
+  volatile unsigned char keycode = 0;
+  asm volatile ("inb $0x60, %%al\n\t"
+                "movb %%al, %0\n\t":"=r"(keycode)::"al");
+  if (keycode == CURSOR_DOWN_CODE) {
+    terminal_cursor_down();
+  } else if (keycode == CURSOR_UP_CODE) {
+    terminal_cursor_up();
+  } else if (keycode == 0x04) {
+    // '3' symbol on keyboard
+    printf_("boop\n");
+  }
+
+  (void)frame;
+  sti();
 }

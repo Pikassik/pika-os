@@ -1,53 +1,28 @@
-ENTRY(_start_early)
-
-KERNEL_HIGH = 0x80000000;
+ENTRY(_start)
 
 SECTIONS
 {
-    . = 0x00100000;
+    . = 1M;
 
-    .multiboot : {
-        KEEP(*(.multiboot))
+    .text BLOCK(4K) : ALIGN(4K)
+    {
+        *(.multiboot)
+        *(.text)
     }
 
-    .boot.text : {
-        *(.boot.text)
+    .rodata BLOCK(4K) : ALIGN(4K)
+    {
+        *(.rodata)
     }
 
-	. += KERNEL_HIGH;
+    .data BLOCK(4K) : ALIGN(4K)
+    {
+        *(.data)
+    }
 
-    PROVIDE(KERNEL_START = .);
-	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_HIGH) {
-		*(.text)
-	}
-
-	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_HIGH) {
-		*(.rodata)
-	}
-
-	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_HIGH) {
-		*(.data)
-	}
-
-	.bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_HIGH) {
-		*(COMMON)
-		*(.bss)
-	}
-
-    . += 4M;
-    . = ALIGN(0x1000);
-    PROVIDE(USERSPACE_START = .);
-    .userspace.text : AT(ADDR(.userspace.text) - KERNEL_HIGH) {
-		*(.userspace.text)
-	}
-	PROVIDE(USERSPACE_END = .);
-
-    PROVIDE(KERNEL_END = .);
-
-    /DISCARD/ : {
-		*(.eh_frame)
-        *(.note.gnu.*)
-        *(.dynamic)
-	}
-
+    .bss BLOCK(4K) : ALIGN(4K)
+    {
+        *(COMMON)
+        *(.bss)
+    }
 }

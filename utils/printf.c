@@ -144,7 +144,6 @@ static inline void _out_null(char character, void* buffer, size_t idx, size_t ma
   (void)character; (void)buffer; (void)idx; (void)maxlen;
 }
 
-void _putchar(char c);
 
 // internal _putchar wrapper
 static inline void _out_char(char character, void* buffer, size_t idx, size_t maxlen)

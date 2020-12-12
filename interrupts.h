@@ -9,3 +9,5 @@ struct iframe {
 };
 
 void init_idt();
+void sti();
+void cli();
