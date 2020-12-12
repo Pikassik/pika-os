@@ -1,4 +1,5 @@
 # Prerequisites
+*.sym
 *.d
 .idea/*
 build/*
