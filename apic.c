@@ -157,8 +157,8 @@ void apic_init(struct acpi_sdt* rsdt) {
     panic("cannot locate Local APIC address");
   }
 
-  identity_map(lapic_ptr, 2 * PAGE_SIZE);
-  identity_map(ioapic_ptr, 2 * PAGE_SIZE);
+  identity_map((void*)lapic_ptr, 2 * PAGE_SIZE);
+  identity_map((void*)ioapic_ptr, 2 * PAGE_SIZE);
 
   // Disable old PIC.
   outb(0x20 + 1, 0xFF);

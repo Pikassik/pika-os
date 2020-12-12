@@ -39,7 +39,7 @@ void acpi_verify_sdt(struct acpi_sdt* sdt) {
   struct acpi_sdt_header* header = &sdt->header;
 
   uint32_t header_size = header->length;
-  uint32_t checksum = calc_checksum(header, header_size);
+  uint32_t checksum = calc_checksum((uint8_t*)header, header_size);
 
   char sign[5];
   memcpy(sign, header->signature, 4);

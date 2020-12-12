@@ -26,16 +26,15 @@ static const char LOGO[] =
 "           :-._____.-:\n "
 "          `''       `''\n";
 
+int interrupts_mode = 0;
+
 void kernel_main(void) {
-  cli();
   init_gdt();
   init_idt();
 
   terminal_initialize();
-
   detect_memory();
   init_kalloc_early();
-//  panic("aaaaaaaa");
   init_kernel_paging();
   struct acpi_sdt* rsdt = acpi_find_rsdt();
   if (!rsdt) {
@@ -49,9 +48,6 @@ void kernel_main(void) {
   set_color(VGA_COLOR_RED);
   printf_(LOGO);
   set_color(VGA_COLOR_WHITE);
-
-  sti();
-
 
   scheduler_start();
   BUG_ON_REACH();

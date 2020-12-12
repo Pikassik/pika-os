@@ -29,7 +29,8 @@ multiboot_info:
 .global _start_early
 .type _start_early, @function
 _start_early:
-    mov $stack_top, %esp
+    cli
+    mov  $stack_top, %esp
     push %ebx
 
     call setup_paging_early

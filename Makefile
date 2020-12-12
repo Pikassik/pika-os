@@ -1,6 +1,7 @@
-C_FLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra
+OPT_LEVEL=-O0
+C_FLAGS=-std=gnu99 -ffreestanding $(OPT_LEVEL) -Wall -Wextra
 AS=gcc -m32 -c -g -mgeneral-regs-only
-CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone -std=gnu99 -ffreestanding -fno-pie -Wall -Wextra -O2 -static-libgcc -O2
+CC=gcc -m32 -g -mgeneral-regs-only -mno-red-zone -std=gnu99 -ffreestanding -fno-pie -Wall -Wextra $(OPT_LEVEL) -static-libgcc $(OPT_LEVEL)
 LD=gcc -m32 -fno-pic -Wl,-static -Wl,-Bsymbolic -nostartfiles
 OBJCOPY=objcopy
 
@@ -55,7 +56,7 @@ build:
 	$(AS) sched.S -o sched_asm.o
 	$(AS) irq.S -o irq_asm.o
 	$(AS) boot.s -o boot.o
-	$(LD) -T linker.ld -o kernel.bin -ffreestanding -O2 -nostdlib $(OBJ) -lgcc
+	$(LD) -T linker.ld -o kernel.bin -ffreestanding $(OPT_LEVEL) -nostdlib $(OBJ) -lgcc
 	$(OBJCOPY) --only-keep-debug kernel.bin kernel.sym
 	$(OBJCOPY) --strip-debug kernel.bin
 

@@ -40,6 +40,7 @@ SECTIONS
     .userspace.text : AT(ADDR(.userspace.text) - KERNEL_HIGH) {
 		*(.userspace.text)
 	}
+	PROVIDE(USERSPACE_END = .);
 
     PROVIDE(KERNEL_END = .);
 

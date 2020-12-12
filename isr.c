@@ -67,11 +67,10 @@ void keyboard_irq(struct regs* regs) {
 volatile uint64_t timer_ticks;
 
 void timer_irq(struct regs* regs) {
-    (void)regs;
-    __sync_fetch_and_add(&timer_ticks, 1);
-    apic_eoi();
-
-    scheduler_tick(regs);
+  (void)regs;
+  __sync_fetch_and_add(&timer_ticks, 1);
+  apic_eoi();
+  scheduler_tick(regs);
 }
 
 void dummy_irq(struct regs* regs) {
@@ -86,7 +85,14 @@ void spurious_irq(struct regs* regs) {
 
 void pagefault_irq(struct regs* regs) {
   (void)regs;
-  printf_("pagefault :(\n    cr2=0x%x, eip=0x%x, err_code=%d",
-          read_cr2(), regs->eip, regs->error_code);
-  panic("pagefault :(");
+  if (!current_task) {
+    printf_("pagefault in kernel :(\n"
+            "    cr2=0x%x, eip=0x%x, err_code=%d\n",
+        read_cr2(), regs->eip, regs->error_code);
+    panic("pagefault :(");
+  }
+
+  current_task->exitcode = 0x10000; // "terminated"
+  current_task->state = TASK_TERMINATED;
+  reschedule();
 }
